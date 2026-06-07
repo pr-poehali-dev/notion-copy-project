@@ -34,6 +34,13 @@ export default function Index() {
   const [activeSection, setActiveSection] = useState("workspace");
   const [pages, setPages] = useState<Page[]>(defaultPages);
   const [activePage, setActivePage] = useState<Page | null>(null);
+  const [isDark, setIsDark] = useState(false);
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+  };
 
   const handleAddPage = (section: string) => {
     const icons: Record<string, string> = { notes: "📝", databases: "📋" };
@@ -92,6 +99,14 @@ export default function Index() {
             </button>
             <button className="notion-hover p-1.5 text-muted-foreground hover:text-foreground">
               <Icon name="MoreHorizontal" size={14} />
+            </button>
+            <div className="w-px h-4 bg-border mx-1" />
+            <button
+              onClick={toggleTheme}
+              className="notion-hover p-1.5 text-muted-foreground hover:text-foreground"
+              title={isDark ? "Светлая тема" : "Тёмная тема"}
+            >
+              <Icon name={isDark ? "Sun" : "Moon"} size={14} />
             </button>
           </div>
         </header>
