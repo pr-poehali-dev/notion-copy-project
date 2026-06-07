@@ -34,12 +34,18 @@ export default function Index() {
   const [activeSection, setActiveSection] = useState("workspace");
   const [pages, setPages] = useState<Page[]>(defaultPages);
   const [activePage, setActivePage] = useState<Page | null>(null);
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    const dark = saved === "dark";
+    document.documentElement.classList.toggle("dark", dark);
+    return dark;
+  });
 
   const toggleTheme = () => {
     const next = !isDark;
     setIsDark(next);
     document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
   };
 
   const handleAddPage = (section: string) => {
