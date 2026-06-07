@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 
 interface Page {
@@ -14,7 +14,7 @@ interface SidebarProps {
   pages: Page[];
   onPageSelect: (page: Page) => void;
   activePage: Page | null;
-  onAddPage: (section: string) => void;
+  onAddPage: (section: string, title: string, icon: string) => void;
 }
 
 const navItems = [
@@ -24,6 +24,91 @@ const navItems = [
   { id: "calendar", label: "Календарь", icon: "Calendar" },
   { id: "automations", label: "Автоматизации", icon: "Zap" },
 ];
+
+const EMOJI_OPTIONS = [
+  "📝","💡","📌","📎","🗂️","📁","📋","📊","📈","📉",
+  "✅","🎯","🔖","🗒️","💼","🧩","🔍","💬","🌟","🚀",
+  "👥","🤝","📅","🕐","🔔","⚙️","🛠️","🎨","📷","🌐",
+  "❤️","🧠","💰","🏆","🎪","🌿","🔐","📣","🧪","✨",
+];
+
+interface CreateFormProps {
+  section: string;
+  onConfirm: (title: string, icon: string) => void;
+  onCancel: () => void;
+}
+
+function CreatePageForm({ section, onConfirm, onCancel }: CreateFormProps) {
+  const [title, setTitle] = useState("");
+  const [icon, setIcon] = useState(section === "notes" ? "📝" : "📋");
+  const [showEmoji, setShowEmoji] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleConfirm = () => {
+    onConfirm(title.trim() || (section === "notes" ? "Новая заметка" : "Новая база"), icon);
+  };
+
+  return (
+    <div className="mx-2 mb-1 p-3 rounded-lg border border-border bg-card animate-fade-in shadow-sm">
+      {/* Icon picker */}
+      <div className="mb-2">
+        <button
+          onClick={() => setShowEmoji(!showEmoji)}
+          className="text-xl hover:scale-110 transition-transform duration-150 rounded-md px-1 py-0.5 hover:bg-accent"
+          title="Выбрать иконку"
+        >
+          {icon}
+        </button>
+      </div>
+
+      {showEmoji && (
+        <div className="mb-2 p-2 rounded-lg border border-border bg-background grid grid-cols-8 gap-0.5 max-h-28 overflow-y-auto animate-fade-in">
+          {EMOJI_OPTIONS.map((e) => (
+            <button
+              key={e}
+              onClick={() => { setIcon(e); setShowEmoji(false); }}
+              className={`text-base rounded p-0.5 hover:bg-accent transition-colors ${icon === e ? "bg-accent" : ""}`}
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Title input */}
+      <input
+        ref={inputRef}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleConfirm();
+          if (e.key === "Escape") onCancel();
+        }}
+        placeholder={section === "notes" ? "Название заметки..." : "Название базы..."}
+        className="w-full text-xs px-2 py-1.5 border border-border rounded-md bg-transparent focus:outline-none focus:border-foreground/40 transition-colors text-foreground placeholder:text-muted-foreground"
+      />
+
+      <div className="flex gap-1.5 mt-2">
+        <button
+          onClick={handleConfirm}
+          className="flex-1 py-1 bg-foreground text-background text-xs font-medium rounded-md hover:opacity-90 transition-opacity"
+        >
+          Создать
+        </button>
+        <button
+          onClick={onCancel}
+          className="flex-1 py-1 border border-border text-xs rounded-md hover:bg-accent transition-colors text-foreground"
+        >
+          Отмена
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Sidebar({
   activeSection,
@@ -35,6 +120,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSections, setExpandedSections] = useState<string[]>(["notes"]);
+  const [creatingIn, setCreatingIn] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) =>
@@ -43,6 +129,13 @@ export default function Sidebar({
   };
 
   const sectionPages = (section: string) => pages.filter((p) => p.section === section);
+
+  const handleCreate = (title: string, icon: string) => {
+    if (creatingIn) {
+      onAddPage(creatingIn, title, icon);
+      setCreatingIn(null);
+    }
+  };
 
   return (
     <aside
@@ -133,13 +226,23 @@ export default function Sidebar({
             {!collapsed &&
               expandedSections.includes(item.id) &&
               (item.id === "notes" || item.id === "databases") && (
-                <button
-                  onClick={() => onAddPage(item.id)}
-                  className="w-full flex items-center gap-2 pl-6 pr-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150 mb-0.5"
-                >
-                  <Icon name="Plus" size={12} />
-                  <span>Добавить</span>
-                </button>
+                <>
+                  {creatingIn === item.id ? (
+                    <CreatePageForm
+                      section={item.id}
+                      onConfirm={handleCreate}
+                      onCancel={() => setCreatingIn(null)}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setCreatingIn(item.id)}
+                      className="w-full flex items-center gap-2 pl-6 pr-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors duration-150 mb-0.5"
+                    >
+                      <Icon name="Plus" size={12} />
+                      <span>Добавить</span>
+                    </button>
+                  )}
+                </>
               )}
           </div>
         ))}

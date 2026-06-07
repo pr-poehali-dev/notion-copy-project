@@ -48,12 +48,11 @@ export default function Index() {
     localStorage.setItem("theme", next ? "dark" : "light");
   };
 
-  const handleAddPage = (section: string) => {
-    const icons: Record<string, string> = { notes: "📝", databases: "📋" };
+  const handleAddPage = (section: string, title: string, icon: string) => {
     const newPage: Page = {
       id: Date.now().toString(),
-      title: section === "notes" ? "Новая заметка" : "Новая база",
-      icon: icons[section] || "📄",
+      title,
+      icon,
       section,
     };
     setPages([...pages, newPage]);
