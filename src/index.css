@@ -49,6 +49,45 @@
     --notion-red: 0 72% 65%;
     --notion-purple: 263 70% 68%;
   }
+
+  .dark {
+    --background: 220 16% 10%;
+    --foreground: 220 10% 92%;
+
+    --card: 220 14% 13%;
+    --card-foreground: 220 10% 92%;
+
+    --popover: 220 14% 13%;
+    --popover-foreground: 220 10% 92%;
+
+    --primary: 220 10% 92%;
+    --primary-foreground: 220 16% 10%;
+
+    --secondary: 220 13% 17%;
+    --secondary-foreground: 220 10% 92%;
+
+    --muted: 220 13% 17%;
+    --muted-foreground: 220 10% 52%;
+
+    --accent: 220 13% 18%;
+    --accent-foreground: 220 10% 92%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 220 10% 92%;
+
+    --border: 220 13% 20%;
+    --input: 220 13% 20%;
+    --ring: 220 10% 70%;
+
+    --sidebar-background: 220 16% 8%;
+    --sidebar-foreground: 220 10% 65%;
+    --sidebar-primary: 220 10% 92%;
+    --sidebar-primary-foreground: 220 16% 10%;
+    --sidebar-accent: 220 13% 15%;
+    --sidebar-accent-foreground: 220 10% 92%;
+    --sidebar-border: 220 13% 18%;
+    --sidebar-ring: 220 10% 70%;
+  }
 }
 
 @layer base {
