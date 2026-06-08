@@ -1,111 +1,61 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
-interface Event {
-  id: string;
-  title: string;
-  date: string;
-  color: string;
-  time?: string;
-}
-
-const MONTHS = [
-  "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
-];
-const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-
-const defaultEvents: Event[] = [
-  { id: "1", title: "Встреча с командой", date: "2026-06-10", color: "hsl(var(--notion-blue))", time: "10:00" },
-  { id: "2", title: "Дедлайн проекта", date: "2026-06-15", color: "hsl(var(--notion-red))", time: "18:00" },
-  { id: "3", title: "Демо клиенту", date: "2026-06-08", color: "hsl(var(--notion-green))", time: "14:30" },
-  { id: "4", title: "Ретроспектива", date: "2026-06-20", color: "hsl(var(--notion-orange))", time: "16:00" },
-  { id: "5", title: "Планинг Q3", date: "2026-06-25", color: "hsl(var(--notion-purple))", time: "11:00" },
+const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+const WEEKDAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const EVENT_COLORS = [
+  "hsl(213 94% 68%)","hsl(142 69% 58%)","hsl(25 95% 65%)",
+  "hsl(263 70% 68%)","hsl(0 72% 65%)",
 ];
 
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function getFirstDayOfMonth(year: number, month: number) {
-  const day = new Date(year, month, 1).getDay();
-  return day === 0 ? 6 : day - 1;
-}
+function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
+function getFirstDay(y: number, m: number) { const d = new Date(y, m, 1).getDay(); return d === 0 ? 6 : d - 1; }
 
 export default function CalendarView() {
+  const { events, addEvent, deleteEvent } = useWorkspace();
   const today = new Date();
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
-  const [events, setEvents] = useState<Event[]>(defaultEvents);
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newEventTitle, setNewEventTitle] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newTime, setNewTime] = useState("09:00");
+  const [newColor, setNewColor] = useState(EVENT_COLORS[0]);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
-  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDay(year, month);
 
-  const prevMonth = () => {
-    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
-    else setCurrentMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(y => y + 1); }
-    else setCurrentMonth(m => m + 1);
-  };
+  const prevMonth = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
+  const nextMonth = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); };
 
-  const dateString = (day: number) =>
-    `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-  const eventsForDay = (day: number) =>
-    events.filter((e) => e.date === dateString(day));
-
-  const selectedDateStr = selectedDay ? dateString(selectedDay) : null;
+  const dateStr = (day: number) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const eventsForDay = (day: number) => events.filter((e) => e.date === dateStr(day));
   const selectedEvents = selectedDay ? eventsForDay(selectedDay) : [];
 
-  const addEvent = () => {
-    if (!newEventTitle.trim() || !selectedDay) return;
-    const colors = [
-      "hsl(var(--notion-blue))",
-      "hsl(var(--notion-green))",
-      "hsl(var(--notion-orange))",
-      "hsl(var(--notion-purple))",
-    ];
-    const newEvent: Event = {
-      id: Date.now().toString(),
-      title: newEventTitle,
-      date: dateString(selectedDay),
-      color: colors[Math.floor(Math.random() * colors.length)],
-      time: "09:00",
-    };
-    setEvents([...events, newEvent]);
-    setNewEventTitle("");
-    setShowAddForm(false);
-  };
+  const isToday = (day: number) => day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
-  const isToday = (day: number) =>
-    day === today.getDate() &&
-    currentMonth === today.getMonth() &&
-    currentYear === today.getFullYear();
+  const handleAdd = () => {
+    if (!newTitle.trim() || !selectedDay) return;
+    addEvent({ title: newTitle.trim(), date: dateStr(selectedDay), time: newTime, color: newColor });
+    setNewTitle("");
+    setNewTime("09:00");
+    setShowForm(false);
+  };
 
   return (
     <div className="flex flex-1 overflow-hidden">
-      {/* Calendar */}
+      {/* Calendar grid */}
       <div className="flex-1 overflow-y-auto p-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-foreground">
-              {MONTHS[currentMonth]} {currentYear}
-            </h1>
-          </div>
+          <h1 className="text-xl font-semibold text-foreground">{MONTHS[month]} {year}</h1>
           <div className="flex items-center gap-1">
             <button onClick={prevMonth} className="notion-hover p-1.5 text-muted-foreground hover:text-foreground">
               <Icon name="ChevronLeft" size={16} />
             </button>
-            <button
-              onClick={() => { setCurrentMonth(today.getMonth()); setCurrentYear(today.getFullYear()); setSelectedDay(today.getDate()); }}
-              className="px-2.5 py-1 text-xs font-medium border border-border rounded-md hover:bg-accent transition-colors"
-            >
+            <button onClick={() => { setMonth(today.getMonth()); setYear(today.getFullYear()); setSelectedDay(today.getDate()); }}
+              className="px-2.5 py-1 text-xs font-medium border border-border rounded-md hover:bg-accent transition-colors text-foreground">
               Сегодня
             </button>
             <button onClick={nextMonth} className="notion-hover p-1.5 text-muted-foreground hover:text-foreground">
@@ -114,60 +64,35 @@ export default function CalendarView() {
           </div>
         </div>
 
-        {/* Weekday headers */}
         <div className="grid grid-cols-7 mb-1">
           {WEEKDAYS.map((d) => (
-            <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-2">
-              {d}
-            </div>
+            <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-2">{d}</div>
           ))}
         </div>
 
-        {/* Days grid */}
         <div className="grid grid-cols-7 gap-px bg-border rounded-xl overflow-hidden border border-border">
           {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`empty-${i}`} className="bg-[hsl(var(--sidebar-background))] min-h-24 p-2" />
+            <div key={`e${i}`} className="bg-[hsl(var(--sidebar-background))] min-h-24 p-2" />
           ))}
           {Array.from({ length: daysInMonth }).map((_, i) => {
             const day = i + 1;
             const dayEvents = eventsForDay(day);
             const selected = selectedDay === day;
-            const todayDay = isToday(day);
             return (
-              <div
-                key={day}
-                onClick={() => setSelectedDay(day)}
-                className={`bg-card min-h-24 p-2 cursor-pointer transition-colors duration-150 ${
-                  selected ? "ring-1 ring-inset ring-foreground/20 bg-accent/30" : "hover:bg-accent/20"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span
-                    className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${
-                      todayDay
-                        ? "bg-foreground text-background text-xs"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {day}
-                  </span>
-                </div>
+              <div key={day} onClick={() => setSelectedDay(day)}
+                className={`bg-card min-h-24 p-2 cursor-pointer transition-colors duration-150 ${selected ? "ring-1 ring-inset ring-foreground/20 bg-accent/30" : "hover:bg-accent/20"}`}>
+                <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${isToday(day) ? "bg-foreground text-background text-xs" : "text-foreground"}`}>
+                  {day}
+                </span>
                 <div className="space-y-0.5">
                   {dayEvents.slice(0, 2).map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="text-[11px] font-medium px-1.5 py-0.5 rounded truncate"
-                      style={{ background: ev.color + "22", color: ev.color }}
-                    >
+                    <div key={ev.id} className="text-[11px] font-medium px-1.5 py-0.5 rounded truncate"
+                      style={{ background: ev.color + "22", color: ev.color }}>
                       {ev.time && <span className="opacity-70 mr-1">{ev.time}</span>}
                       {ev.title}
                     </div>
                   ))}
-                  {dayEvents.length > 2 && (
-                    <div className="text-[10px] text-muted-foreground px-1">
-                      +{dayEvents.length - 2} ещё
-                    </div>
-                  )}
+                  {dayEvents.length > 2 && <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 2} ещё</div>}
                 </div>
               </div>
             );
@@ -176,79 +101,76 @@ export default function CalendarView() {
       </div>
 
       {/* Day panel */}
-      <div className="w-64 shrink-0 border-l border-border overflow-y-auto">
+      <div className="w-64 shrink-0 border-l border-border overflow-y-auto flex flex-col">
         <div className="p-4 border-b border-border">
           <h2 className="text-sm font-semibold text-foreground">
-            {selectedDay
-              ? `${selectedDay} ${MONTHS[currentMonth]}`
-              : "Выберите день"}
+            {selectedDay ? `${selectedDay} ${MONTHS[month]}` : "Выберите день"}
           </h2>
-          {isToday(selectedDay || 0) && (
-            <span className="text-xs text-muted-foreground">Сегодня</span>
-          )}
+          {selectedDay && isToday(selectedDay) && <span className="text-xs text-muted-foreground">Сегодня</span>}
         </div>
 
-        <div className="p-3">
-          {selectedEvents.length === 0 ? (
+        <div className="p-3 flex-1">
+          {selectedEvents.length === 0 && !showForm && (
             <p className="text-xs text-muted-foreground py-2">Нет событий</p>
-          ) : (
-            <div className="space-y-2">
-              {selectedEvents.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="p-2.5 rounded-lg border border-border"
-                  style={{ borderLeftColor: ev.color, borderLeftWidth: 3 }}
-                >
-                  <p className="text-sm font-medium text-foreground">{ev.title}</p>
-                  {ev.time && (
-                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                      <Icon name="Clock" size={11} />
-                      {ev.time}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
           )}
-
-          {selectedDay && !showAddForm && (
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="mt-3 w-full flex items-center gap-1.5 px-2.5 py-1.5 border border-dashed border-border rounded-lg text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-            >
-              <Icon name="Plus" size={13} />
-              Добавить событие
-            </button>
-          )}
-
-          {showAddForm && (
-            <div className="mt-3 space-y-2 animate-fade-in">
-              <input
-                autoFocus
-                value={newEventTitle}
-                onChange={(e) => setNewEventTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addEvent()}
-                placeholder="Название события..."
-                className="w-full text-sm px-2.5 py-1.5 border border-border rounded-md focus:outline-none focus:border-foreground/40 transition-colors bg-transparent"
-              />
-              <div className="flex gap-1.5">
-                <button
-                  onClick={addEvent}
-                  className="flex-1 py-1.5 bg-foreground text-background text-xs font-medium rounded-md hover:opacity-90 transition-opacity"
-                >
-                  Добавить
-                </button>
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="flex-1 py-1.5 border border-border text-xs rounded-md hover:bg-accent transition-colors"
-                >
-                  Отмена
+          <div className="space-y-2 mb-3">
+            {selectedEvents.map((ev) => (
+              <div key={ev.id} className="group p-2.5 rounded-lg border border-border relative" style={{ borderLeftColor: ev.color, borderLeftWidth: 3 }}>
+                <p className="text-sm font-medium text-foreground pr-5">{ev.title}</p>
+                {ev.time && <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><Icon name="Clock" size={11} />{ev.time}</p>}
+                <button onClick={() => setConfirmDelete(ev.id)}
+                  className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
+                  <Icon name="X" size={13} />
                 </button>
               </div>
+            ))}
+          </div>
+
+          {showForm ? (
+            <div className="space-y-2 animate-fade-in">
+              <input autoFocus value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") setShowForm(false); }}
+                placeholder="Название события..."
+                className="w-full text-sm px-2.5 py-1.5 border border-border rounded-md focus:outline-none focus:border-foreground/40 bg-transparent text-foreground" />
+              <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)}
+                className="w-full text-sm px-2.5 py-1.5 border border-border rounded-md focus:outline-none bg-transparent text-foreground" />
+              <div className="flex gap-1">
+                {EVENT_COLORS.map((c) => (
+                  <button key={c} onClick={() => setNewColor(c)}
+                    className={`w-5 h-5 rounded-full border-2 transition-transform ${newColor === c ? "scale-125 border-foreground/30" : "border-transparent"}`}
+                    style={{ background: c }} />
+                ))}
+              </div>
+              <div className="flex gap-1.5">
+                <button onClick={handleAdd} className="flex-1 py-1.5 bg-foreground text-background text-xs font-medium rounded-md hover:opacity-90">Добавить</button>
+                <button onClick={() => setShowForm(false)} className="flex-1 py-1.5 border border-border text-xs rounded-md hover:bg-accent text-foreground">Отмена</button>
+              </div>
             </div>
+          ) : (
+            selectedDay && (
+              <button onClick={() => setShowForm(true)}
+                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 border border-dashed border-border rounded-lg text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
+                <Icon name="Plus" size={13} /> Добавить событие
+              </button>
+            )
           )}
         </div>
       </div>
+
+      {/* Confirm delete */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-card border border-border rounded-xl p-5 shadow-lg w-64" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-foreground mb-1">Удалить событие?</h3>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => { deleteEvent(confirmDelete); setConfirmDelete(null); }}
+                className="flex-1 py-1.5 bg-destructive text-white text-xs font-medium rounded-md hover:opacity-90">Удалить</button>
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-1.5 border border-border text-xs rounded-md hover:bg-accent text-foreground">Отмена</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

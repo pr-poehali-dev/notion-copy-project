@@ -1,17 +1,8 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
-interface Rule {
-  id: string;
-  name: string;
-  trigger: string;
-  action: string;
-  active: boolean;
-  runs: number;
-  lastRun?: string;
-}
-
-const triggerOptions = [
+const TRIGGER_OPTIONS = [
   "Новая запись в базе данных",
   "Изменение статуса",
   "Наступление даты",
@@ -20,7 +11,7 @@ const triggerOptions = [
   "Каждую неделю в понедельник",
 ];
 
-const actionOptions = [
+const ACTION_OPTIONS = [
   "Отправить уведомление",
   "Создать задачу",
   "Изменить статус записи",
@@ -29,172 +20,90 @@ const actionOptions = [
   "Архивировать запись",
 ];
 
-const defaultRules: Rule[] = [
-  {
-    id: "1",
-    name: "Уведомление о новом клиенте",
-    trigger: "Новая запись в базе данных",
-    action: "Отправить уведомление",
-    active: true,
-    runs: 24,
-    lastRun: "2 часа назад",
-  },
-  {
-    id: "2",
-    name: "Еженедельный отчёт",
-    trigger: "Каждую неделю в понедельник",
-    action: "Создать новую заметку",
-    active: true,
-    runs: 8,
-    lastRun: "вчера",
-  },
-  {
-    id: "3",
-    name: "Архивация завершённых задач",
-    trigger: "Изменение статуса",
-    action: "Архивировать запись",
-    active: false,
-    runs: 45,
-    lastRun: "5 дней назад",
-  },
-];
-
-interface CreateFormState {
-  name: string;
-  trigger: string;
-  action: string;
-}
-
 export default function AutomationsView() {
-  const [rules, setRules] = useState<Rule[]>(defaultRules);
+  const { rules, addRule, updateRule, deleteRule } = useWorkspace();
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<CreateFormState>({ name: "", trigger: triggerOptions[0], action: actionOptions[0] });
+  const [form, setForm] = useState({ name: "", trigger: TRIGGER_OPTIONS[0], action: ACTION_OPTIONS[0] });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const toggleRule = (id: string) => {
-    setRules(rules.map((r) => r.id === id ? { ...r, active: !r.active } : r));
-  };
-
-  const deleteRule = (id: string) => {
-    setRules(rules.filter((r) => r.id !== id));
-  };
-
-  const createRule = () => {
+  const handleCreate = () => {
     if (!form.name.trim()) return;
-    const newRule: Rule = {
-      id: Date.now().toString(),
-      name: form.name,
-      trigger: form.trigger,
-      action: form.action,
-      active: true,
-      runs: 0,
-    };
-    setRules([...rules, newRule]);
-    setForm({ name: "", trigger: triggerOptions[0], action: actionOptions[0] });
+    addRule({ name: form.name.trim(), trigger: form.trigger, action: form.action, active: true });
+    setForm({ name: "", trigger: TRIGGER_OPTIONS[0], action: ACTION_OPTIONS[0] });
     setShowCreate(false);
   };
 
+  const totalRuns = rules.reduce((s, r) => s + r.runs, 0);
   const activeCount = rules.filter((r) => r.active).length;
-  const totalRuns = rules.reduce((sum, r) => sum + r.runs, 0);
 
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-3xl mx-auto px-8 py-10">
+
         {/* Header */}
         <div className="flex items-center justify-between mb-8 animate-fade-in">
           <div>
             <h1 className="text-2xl font-semibold text-foreground tracking-tight">Автоматизации</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Создавайте правила для автоматических действий
-            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">Создавайте правила для автоматических действий</p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <Icon name="Plus" size={15} />
-            Создать правило
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
+            <Icon name="Plus" size={15} /> Создать правило
           </button>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-8">
           {[
-            { label: "Активных правил", value: activeCount, icon: "Zap", color: "hsl(var(--notion-green))" },
-            { label: "Всего правил", value: rules.length, icon: "List", color: "hsl(var(--notion-blue))" },
-            { label: "Всего запусков", value: totalRuns, icon: "Activity", color: "hsl(var(--notion-purple))" },
-          ].map((stat, i) => (
-            <div
-              key={i}
-              className="p-4 rounded-xl border border-border bg-card animate-fade-in"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
+            { label: "Активных", value: activeCount, icon: "Zap", color: "hsl(142 69% 58%)" },
+            { label: "Всего правил", value: rules.length, icon: "List", color: "hsl(213 94% 68%)" },
+            { label: "Запусков", value: totalRuns, icon: "Activity", color: "hsl(263 70% 68%)" },
+          ].map((s, i) => (
+            <div key={i} className="p-4 rounded-xl border border-border bg-card animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
               <div className="flex items-center gap-2 mb-2">
-                <Icon name={stat.icon} size={14} style={{ color: stat.color }} />
-                <span className="text-xs text-muted-foreground">{stat.label}</span>
+                <Icon name={s.icon} size={14} style={{ color: s.color }} />
+                <span className="text-xs text-muted-foreground">{s.label}</span>
               </div>
-              <p className="text-2xl font-semibold text-foreground font-mono-tag">{stat.value}</p>
+              <p className="text-2xl font-semibold text-foreground font-mono-tag">{s.value}</p>
             </div>
           ))}
         </div>
 
         {/* Create form */}
         {showCreate && (
-          <div className="mb-6 p-5 rounded-xl border border-foreground/20 bg-card animate-fade-in">
+          <div className="mb-6 p-5 rounded-xl border border-foreground/15 bg-card animate-fade-in">
             <h3 className="text-sm font-semibold text-foreground mb-4">Новое правило</h3>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Название</label>
-                <input
-                  autoFocus
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                <input autoFocus value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setShowCreate(false); }}
                   placeholder="Например: Уведомление о новом лиде"
-                  className="w-full text-sm px-3 py-2 border border-border rounded-md focus:outline-none focus:border-foreground/40 bg-transparent transition-colors"
-                />
+                  className="w-full text-sm px-3 py-2 border border-border rounded-md focus:outline-none focus:border-foreground/40 bg-transparent text-foreground" />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1 block">
-                    <Icon name="GitBranch" size={11} />
-                    Триггер (когда)
+                    <Icon name="GitBranch" size={11} /> Триггер (когда)
                   </label>
-                  <select
-                    value={form.trigger}
-                    onChange={(e) => setForm({ ...form, trigger: e.target.value })}
-                    className="w-full text-sm px-3 py-2 border border-border rounded-md focus:outline-none focus:border-foreground/40 bg-background transition-colors"
-                  >
-                    {triggerOptions.map((o) => <option key={o}>{o}</option>)}
+                  <select value={form.trigger} onChange={(e) => setForm({ ...form, trigger: e.target.value })}
+                    className="w-full text-sm px-3 py-2 border border-border rounded-md focus:outline-none bg-background text-foreground">
+                    {TRIGGER_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 flex items-center gap-1 block">
-                    <Icon name="ArrowRight" size={11} />
-                    Действие (что делать)
+                    <Icon name="ArrowRight" size={11} /> Действие (что делать)
                   </label>
-                  <select
-                    value={form.action}
-                    onChange={(e) => setForm({ ...form, action: e.target.value })}
-                    className="w-full text-sm px-3 py-2 border border-border rounded-md focus:outline-none focus:border-foreground/40 bg-background transition-colors"
-                  >
-                    {actionOptions.map((o) => <option key={o}>{o}</option>)}
+                  <select value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })}
+                    className="w-full text-sm px-3 py-2 border border-border rounded-md focus:outline-none bg-background text-foreground">
+                    {ACTION_OPTIONS.map((o) => <option key={o}>{o}</option>)}
                   </select>
                 </div>
               </div>
-
               <div className="flex gap-2 pt-1">
-                <button
-                  onClick={createRule}
-                  className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity"
-                >
-                  Создать
-                </button>
-                <button
-                  onClick={() => setShowCreate(false)}
-                  className="px-4 py-2 border border-border text-sm rounded-md hover:bg-accent transition-colors"
-                >
-                  Отмена
-                </button>
+                <button onClick={handleCreate} className="px-4 py-2 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90">Создать</button>
+                <button onClick={() => setShowCreate(false)} className="px-4 py-2 border border-border text-sm rounded-md hover:bg-accent text-foreground">Отмена</button>
               </div>
             </div>
           </div>
@@ -202,61 +111,47 @@ export default function AutomationsView() {
 
         {/* Rules list */}
         <div className="space-y-2">
+          {rules.length === 0 && !showCreate && (
+            <div className="text-center py-16 animate-fade-in">
+              <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3">
+                <Icon name="Zap" size={22} className="text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">Нет правил. Создайте первое!</p>
+            </div>
+          )}
           {rules.map((rule, i) => (
-            <div
-              key={rule.id}
-              className={`group p-4 rounded-xl border border-border bg-card transition-all duration-200 animate-fade-in ${
-                !rule.active ? "opacity-50" : ""
-              }`}
-              style={{ animationDelay: `${i * 50}ms` }}
-            >
+            <div key={rule.id}
+              className={`group p-4 rounded-xl border border-border bg-card transition-all duration-200 animate-fade-in ${!rule.active ? "opacity-50" : ""}`}
+              style={{ animationDelay: `${i * 40}ms` }}>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className={`w-2 h-2 rounded-full shrink-0 ${rule.active ? "bg-green-400" : "bg-muted-foreground/30"}`}
-                    />
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${rule.active ? "bg-green-400" : "bg-muted-foreground/30"}`} />
                     <h3 className="text-sm font-medium text-foreground">{rule.name}</h3>
                   </div>
-
-                  {/* Flow */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[hsl(var(--notion-blue)/0.1)] text-[11px] rounded-md text-muted-foreground">
-                      <Icon name="GitBranch" size={10} />
-                      {rule.trigger}
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[hsl(213_94%_68%_/_0.1)] text-[11px] rounded-md text-muted-foreground">
+                      <Icon name="GitBranch" size={10} /> {rule.trigger}
                     </span>
                     <Icon name="ArrowRight" size={12} className="text-muted-foreground/40 shrink-0" />
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[hsl(var(--notion-green)/0.1)] text-[11px] rounded-md text-muted-foreground">
-                      <Icon name="Zap" size={10} />
-                      {rule.action}
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[hsl(142_69%_58%_/_0.1)] text-[11px] rounded-md text-muted-foreground">
+                      <Icon name="Zap" size={10} /> {rule.action}
                     </span>
                   </div>
-
                   {rule.lastRun && (
                     <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Icon name="Clock" size={10} />
-                      Последний запуск: {rule.lastRun} · {rule.runs} раз
+                      <Icon name="Clock" size={10} /> Последний запуск: {rule.lastRun} · {rule.runs} раз
                     </p>
                   )}
                 </div>
-
-                <div className="flex items-center gap-1.5 ml-3 shrink-0">
+                <div className="flex items-center gap-2 ml-3 shrink-0">
                   <button
-                    onClick={() => toggleRule(rule.id)}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
-                      rule.active ? "bg-foreground" : "bg-muted"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                        rule.active ? "translate-x-4" : "translate-x-1"
-                      }`}
-                    />
+                    onClick={() => updateRule(rule.id, { active: !rule.active })}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${rule.active ? "bg-foreground" : "bg-muted"}`}>
+                    <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${rule.active ? "translate-x-4" : "translate-x-1"}`} />
                   </button>
-                  <button
-                    onClick={() => deleteRule(rule.id)}
-                    className="opacity-0 group-hover:opacity-100 notion-hover p-1 text-muted-foreground hover:text-destructive transition-all"
-                  >
+                  <button onClick={() => setConfirmDelete(rule.id)}
+                    className="opacity-0 group-hover:opacity-100 notion-hover p-1 text-muted-foreground hover:text-destructive transition-all">
                     <Icon name="Trash2" size={13} />
                   </button>
                 </div>
@@ -264,16 +159,22 @@ export default function AutomationsView() {
             </div>
           ))}
         </div>
-
-        {rules.length === 0 && (
-          <div className="text-center py-16 animate-fade-in">
-            <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center mx-auto mb-3">
-              <Icon name="Zap" size={22} className="text-muted-foreground" />
-            </div>
-            <p className="text-sm text-muted-foreground">Нет правил. Создайте первое!</p>
-          </div>
-        )}
       </div>
+
+      {/* Confirm delete */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-card border border-border rounded-xl p-5 shadow-lg w-64" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-semibold text-foreground mb-1">Удалить правило?</h3>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => { deleteRule(confirmDelete); setConfirmDelete(null); }}
+                className="flex-1 py-1.5 bg-destructive text-white text-xs font-medium rounded-md hover:opacity-90">Удалить</button>
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-1.5 border border-border text-xs rounded-md hover:bg-accent text-foreground">Отмена</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
