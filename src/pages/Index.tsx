@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import WorkspaceView from "@/components/WorkspaceView";
 import NotesView from "@/components/NotesView";
@@ -6,6 +6,7 @@ import DatabaseView from "@/components/DatabaseView";
 import CalendarView from "@/components/CalendarView";
 import AutomationsView from "@/components/AutomationsView";
 import SettingsPanel from "@/components/SettingsPanel";
+import SearchModal from "@/components/SearchModal";
 import Icon from "@/components/ui/icon";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
@@ -20,6 +21,19 @@ export default function Index() {
 
   const [activeSection, setActiveSection] = useState("workspace");
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Глобальный хоткей Cmd/Ctrl+K
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem("theme");
     const dark = saved === "dark";
@@ -67,7 +81,10 @@ export default function Index() {
         activeSection={activeSection}
         onSectionChange={setActiveSection}
         sections={ws.sections}
+        notes={ws.notes}
+        databases={ws.databases}
         onOpenSettings={() => setShowSettings(true)}
+        onOpenSearch={() => setShowSearch(true)}
         onAddSection={(title, icon, type) => {
           const sec = ws.addSection(title, icon, type);
           setActiveSection(sec.id);
@@ -116,6 +133,13 @@ export default function Index() {
           onClose={() => setShowSettings(false)}
           isDark={isDark}
           onToggleTheme={toggleTheme}
+        />
+      )}
+
+      {showSearch && (
+        <SearchModal
+          onClose={() => setShowSearch(false)}
+          onNavigate={(sectionId) => { setActiveSection(sectionId); setShowSearch(false); }}
         />
       )}
     </div>

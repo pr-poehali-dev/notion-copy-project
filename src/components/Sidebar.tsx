@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { Section } from "@/hooks/useWorkspace";
+import { Section, Note, Database } from "@/hooks/useWorkspace";
 
 const EMOJI_OPTIONS = [
   "📝","💡","📌","📎","🗂️","📁","📋","📊","📈","📉",
@@ -13,16 +13,19 @@ interface SidebarProps {
   activeSection: string;
   onSectionChange: (id: string) => void;
   sections: Section[];
+  notes: Note[];
+  databases: Database[];
   onOpenSettings: () => void;
+  onOpenSearch: () => void;
   onAddSection: (title: string, icon: string, type: Section["type"]) => void;
   onDeleteSection: (id: string) => void;
   workspaceName: string;
 }
 
 const FIXED_NAV = [
-  { id: "workspace",    label: "Рабочее пространство", icon: "LayoutDashboard" },
-  { id: "calendar",     label: "Календарь",             icon: "Calendar"        },
-  { id: "automations",  label: "Автоматизации",         icon: "Zap"             },
+  { id: "workspace",   label: "Рабочее пространство", icon: "LayoutDashboard" },
+  { id: "calendar",    label: "Календарь",             icon: "Calendar"        },
+  { id: "automations", label: "Автоматизации",         icon: "Zap"             },
 ];
 
 function CreateSectionForm({ onConfirm, onCancel }: {
@@ -74,12 +77,18 @@ function CreateSectionForm({ onConfirm, onCancel }: {
 }
 
 export default function Sidebar({
-  activeSection, onSectionChange, sections,
-  onOpenSettings, onAddSection, onDeleteSection, workspaceName,
+  activeSection, onSectionChange, sections, notes, databases,
+  onOpenSettings, onOpenSearch, onAddSection, onDeleteSection, workspaceName,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) =>
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const isExpanded = (id: string) => expanded[id] !== false; // expanded by default
 
   return (
     <aside className={`flex flex-col h-full bg-[hsl(var(--sidebar-background))] border-r border-border transition-all duration-300 ${collapsed ? "w-12" : "w-56"}`}>
@@ -101,7 +110,8 @@ export default function Sidebar({
       {/* Search */}
       {!collapsed && (
         <div className="px-2 py-2">
-          <button className="w-full flex items-center gap-2 px-2 py-1.5 text-muted-foreground hover:text-foreground notion-hover text-sm">
+          <button onClick={onOpenSearch}
+            className="w-full flex items-center gap-2 px-2 py-1.5 text-muted-foreground hover:text-foreground notion-hover text-sm">
             <Icon name="Search" size={14} />
             <span>Поиск...</span>
             <span className="ml-auto font-mono-tag text-xs opacity-50">⌘K</span>
@@ -111,6 +121,7 @@ export default function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-1 overflow-y-auto">
+        {/* Fixed items */}
         {FIXED_NAV.map((item) => (
           <button key={item.id} onClick={() => onSectionChange(item.id)}
             className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors duration-150 mb-0.5 ${
@@ -123,32 +134,84 @@ export default function Sidebar({
           </button>
         ))}
 
-        {/* Dynamic sections */}
+        {/* Dynamic sections with children */}
         {!collapsed && sections.length > 0 && (
           <div className="mt-3 mb-1 px-2">
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Разделы</span>
           </div>
         )}
 
-        {sections.map((sec) => (
-          <div key={sec.id} className="group relative">
-            <button onClick={() => onSectionChange(sec.id)}
-              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors duration-150 mb-0.5 ${
-                activeSection === sec.id
-                  ? "bg-accent text-foreground font-medium"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}>
-              <span className="text-base leading-none shrink-0">{sec.icon}</span>
-              {!collapsed && <span className="flex-1 text-left truncate">{sec.title}</span>}
-            </button>
-            {!collapsed && sec.id !== "notes" && sec.id !== "databases" && (
-              <button onClick={() => setConfirmDelete(sec.id)}
-                className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 notion-hover p-1 text-muted-foreground hover:text-destructive">
-                <Icon name="X" size={11} />
-              </button>
-            )}
-          </div>
-        ))}
+        {sections.map((sec) => {
+          const children = sec.type === "notes"
+            ? notes.filter((n) => n.sectionId === sec.id)
+            : sec.type === "databases"
+            ? databases.filter((d) => d.sectionId === sec.id)
+            : [];
+
+          const open = isExpanded(sec.id);
+
+          return (
+            <div key={sec.id}>
+              {/* Section row */}
+              <div className="group relative flex items-center">
+                {!collapsed && children.length > 0 && (
+                  <button
+                    onClick={() => toggleExpand(sec.id)}
+                    className="absolute left-0 z-10 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    style={{ left: 2 }}
+                  >
+                    <Icon name={open ? "ChevronDown" : "ChevronRight"} size={11} />
+                  </button>
+                )}
+                <button
+                  onClick={() => { onSectionChange(sec.id); if (children.length > 0) toggleExpand(sec.id); }}
+                  className={`w-full flex items-center gap-2 py-1.5 rounded-md text-sm transition-colors duration-150 mb-0.5 ${
+                    !collapsed ? "pl-5 pr-2" : "px-2"
+                  } ${
+                    activeSection === sec.id
+                      ? "bg-accent text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}>
+                  <span className="text-base leading-none shrink-0">{sec.icon}</span>
+                  {!collapsed && <span className="flex-1 text-left truncate">{sec.title}</span>}
+                  {!collapsed && children.length > 0 && (
+                    <span className="text-[10px] font-mono-tag text-muted-foreground/60">{children.length}</span>
+                  )}
+                </button>
+                {!collapsed && sec.id !== "notes" && sec.id !== "databases" && (
+                  <button onClick={() => setConfirmDelete(sec.id)}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 notion-hover p-1 text-muted-foreground hover:text-destructive">
+                    <Icon name="X" size={11} />
+                  </button>
+                )}
+              </div>
+
+              {/* Children (notes or databases) */}
+              {!collapsed && open && children.length > 0 && (
+                <div className="mb-0.5">
+                  {children.map((child) => {
+                    const isNote = "content" in child;
+                    return (
+                      <button
+                        key={child.id}
+                        onClick={() => onSectionChange(sec.id)}
+                        className="w-full flex items-center gap-2 pl-8 pr-2 py-1 rounded-md text-xs transition-colors duration-150 text-muted-foreground hover:bg-accent hover:text-foreground animate-fade-in"
+                      >
+                        <span className="text-sm leading-none shrink-0">{child.icon}</span>
+                        <span className="truncate flex-1 text-left">{child.title}</span>
+                        {!isNote && (
+                          <span className="text-[10px] font-mono-tag text-muted-foreground/50 shrink-0">
+                            {(child as Database).rows.length}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* Add section */}
         {!collapsed && (
@@ -178,7 +241,7 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* Confirm delete section */}
+      {/* Confirm delete */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50" onClick={() => setConfirmDelete(null)}>
           <div className="bg-card border border-border rounded-xl p-5 shadow-lg w-64" onClick={(e) => e.stopPropagation()}>

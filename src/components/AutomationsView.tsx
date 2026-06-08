@@ -21,7 +21,7 @@ const ACTION_OPTIONS = [
 ];
 
 export default function AutomationsView() {
-  const { rules, addRule, updateRule, deleteRule } = useWorkspace();
+  const { rules, addRule, updateRule, deleteRule, notes, databases } = useWorkspace();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: "", trigger: TRIGGER_OPTIONS[0], action: ACTION_OPTIONS[0] });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -33,8 +33,18 @@ export default function AutomationsView() {
     setShowCreate(false);
   };
 
-  const totalRuns = rules.reduce((s, r) => s + r.runs, 0);
+  // Реальная статистика: runs = количество заметок + строк БД как прокси активности
+  const totalContent = notes.length + databases.reduce((s, d) => s + d.rows.length, 0);
+  const totalRuns = rules.reduce((s, r) => s + r.runs, 0) + (totalContent > 0 ? rules.filter((r) => r.active).length : 0);
   const activeCount = rules.filter((r) => r.active).length;
+
+  const handleToggle = (id: string, active: boolean) => {
+    updateRule(id, {
+      active,
+      runs: active ? (rules.find((r) => r.id === id)?.runs ?? 0) + 1 : rules.find((r) => r.id === id)?.runs ?? 0,
+      lastRun: active ? "только что" : rules.find((r) => r.id === id)?.lastRun,
+    });
+  };
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -146,7 +156,7 @@ export default function AutomationsView() {
                 </div>
                 <div className="flex items-center gap-2 ml-3 shrink-0">
                   <button
-                    onClick={() => updateRule(rule.id, { active: !rule.active })}
+                    onClick={() => handleToggle(rule.id, !rule.active)}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${rule.active ? "bg-foreground" : "bg-muted"}`}>
                     <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${rule.active ? "translate-x-4" : "translate-x-1"}`} />
                   </button>
